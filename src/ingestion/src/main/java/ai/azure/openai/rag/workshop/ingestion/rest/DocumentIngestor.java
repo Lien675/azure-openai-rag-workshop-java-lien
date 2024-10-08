@@ -39,11 +39,14 @@ public class DocumentIngestor {
     for (Map.Entry<String, Collection<FormValue>> attribute : input.getValues().entrySet()) {
       for (FormValue fv : attribute.getValue()) {
         if (fv.isFileItem()) {
+
+            // Extract the text from the PDF files
           log.info("### Load file, size {}", fv.getFileItem().getFileSize());
           ApachePdfBoxDocumentParser pdfParser = new ApachePdfBoxDocumentParser();
           Document document = pdfParser.parse(fv.getFileItem().getInputStream());
           log.debug("# PDF size: {}", document.text().length());
 
+            // Split the document into smaller segments
           log.info("### Split document into segments 100 tokens each");
           DocumentSplitter splitter = DocumentSplitters.recursive(2000, 200);
           List<TextSegment> segments = splitter.split(document);
@@ -53,11 +56,13 @@ public class DocumentIngestor {
           }
           log.debug("# Number of segments: {}", segments.size());
 
+            // Compute the embeddings
           log.info("### Embed segments (convert them into vectors that represent the meaning) using embedding model");
           List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
           log.debug("# Number of embeddings: {}", embeddings.size());
           log.debug("# Vector length: {}", embeddings.get(0).vector().length);
 
+            // Store the embeddings in Qdrant
           log.info("### Store embeddings into Qdrant store for further search / retrieval");
           embeddingStore.addAll(embeddings, segments);
         }
